@@ -1,0 +1,5 @@
+#springdoc.show-actuator: true
+
+#springdoc.swagger-ui.urlsPrimaryName: admin
+
+management.endpoints.web.exposure.include: '*'
