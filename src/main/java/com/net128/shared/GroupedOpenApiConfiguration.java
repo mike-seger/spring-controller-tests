@@ -1,4 +1,4 @@
-package com.net128.app.spring.controller.test;
+package com.net128.shared;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -19,39 +19,65 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GroupedOpenApiConfiguration {
 	private final ConfigurableListableBeanFactory beanFactory;
-	final Set<Class<?>> controllerClasses;
-	final String mainGroup;
+	private final Set<Class<?>> controllerClasses;
+	private final String mainGroup;
+	@SuppressWarnings("FieldCanBeLocal")
+	private final String defaultMainGroupName = "main";
+	private final static String sysPropUrlsPrimaryName =
+		"springdoc.swagger-ui.urlsPrimaryName";
 
 	public GroupedOpenApiConfiguration(
 			ConfigurableListableBeanFactory beanFactory,
 			@Value("${springdoc.swagger-ui.urlsPrimaryName:}") String mainGroup) {
 		this.beanFactory = beanFactory;
 		this.mainGroup = mainGroup;
-		this.controllerClasses = new Reflections(getClass().getPackageName())
+		this.controllerClasses = new Reflections(getMainClass().getPackageName())
 			.getTypesAnnotatedWith(RestController.class);
-		log.info("{}", controllerClasses);
+		log.info("RestControllers found: {}", controllerClasses);
 	}
 
 	private void registerExtraGroupedOpenApis(List<String> packageNames, int namePosition) throws BeansException {
 		packageNames.forEach(p -> beanFactory.registerSingleton(
-			"GroupedOpenApi-" + p, apiGroup(p,namePosition)));
+			GroupedOpenApiConfiguration.class.getSimpleName()+
+			"-" + p, apiGroup(p,namePosition)));
 	}
 
-	public GroupedOpenApi apiGroup(String packageName, int namePosition) {
-		return GroupedOpenApi.builder().group(packageName.substring(namePosition))
+	private GroupedOpenApi apiGroup(String packageName, int namePosition) {
+		String groupName = packageName.substring(namePosition);
+		log.info("Created GroupedOpenApi: {}", groupName);
+		return GroupedOpenApi.builder().group(groupName)
 			.packagesToScan(new String [] { packageName }).build();
+	}
+
+	private Class<?> getMainClass()	{
+		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+		if (trace.length > 0) {
+			try {
+				return Class.forName(trace[trace.length - 1].getClassName());
+			} catch(Exception e) {
+				log.error("Failed to determine main class", e);
+			}
+		} else {
+			log.error("Failed to determine main class");
+		}
+		return getClass();
 	}
 
 	@Bean
 	public GroupedOpenApi mainApi() {
 		List<String> packageNames = controllerClasses.stream().map(
 			Class::getPackageName).collect(Collectors.toList());
+		if(packageNames.size()==0) {
+			log.error("No controller package classes found under: {}",
+				getMainClass().getPackageName());
+			return apiGroup(defaultMainGroupName, 0);
+		}
 		String commonParentPackage = StringUtils.getCommonPrefix(
 			packageNames.toArray(new String []{}));
 		String mainPackage = packageNames.remove(0);
 		registerExtraGroupedOpenApis(packageNames, commonParentPackage.length());
 		if(mainGroup.length()==0)
-			System.setProperty("springdoc.swagger-ui.urlsPrimaryName",
+			System.setProperty(sysPropUrlsPrimaryName,
 				mainPackage.substring(commonParentPackage.length()));
 		return apiGroup(mainPackage, commonParentPackage.length());
 	}
