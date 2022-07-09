@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.Reflections;
 import org.springdoc.core.GroupedOpenApi;
+import org.springdoc.core.SwaggerUiConfigProperties;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
@@ -22,40 +22,40 @@ import java.util.stream.Stream;
 public class GroupedOpenApiConfiguration {
 	private final ConfigurableListableBeanFactory beanFactory;
 	private final ApplicationContext context;
-	private final String mainGroup;
+	private String mainGroup;
 	@SuppressWarnings("FieldCanBeLocal")
 	private final String defaultMainGroupName = "main";
-	private final static String sysPropUrlsPrimaryName =
+	private final static String propertyUrlsPrimaryName =
 		"springdoc.swagger-ui.urlsPrimaryName";
 
 	public GroupedOpenApiConfiguration(
 			ApplicationContext context,
-			ConfigurableListableBeanFactory beanFactory,
-			@Value("${springdoc.swagger-ui.urlsPrimaryName:}") String mainGroup) {
+			ConfigurableListableBeanFactory beanFactory
+	) {
 		this.beanFactory = beanFactory;
-		this.mainGroup = mainGroup;
+		this.mainGroup = context.getEnvironment().getProperty(propertyUrlsPrimaryName);
 		this.context = context;
 	}
 
-	private void registerExtraGroupedOpenApis(List<String> packageNames, int namePosition) throws BeansException {
+	private void registerExtraGroupedOpenApis(List<String> packageNames, int prefixLength) throws BeansException {
 		packageNames.forEach(p -> beanFactory.registerSingleton(
 			GroupedOpenApiConfiguration.class.getSimpleName()+
-			"-" + p, apiGroup(p,namePosition)));
+			"-" + p, apiGroup(p,prefixLength)));
 	}
 
-	private GroupedOpenApi apiGroup(String packageName, int namePosition) {
-		int lastDotPos = packageName.lastIndexOf('.');
+	private GroupedOpenApi apiGroup(String packageName, int prefixLength) {
+		var lastDotPos = packageName.lastIndexOf('.');
 		if(lastDotPos>=0) {
-			if(lastDotPos+1<namePosition) namePosition=lastDotPos+1;
-		} else namePosition=0;
-		String groupName = packageName.substring(namePosition);
+			if(lastDotPos+1<prefixLength) prefixLength=lastDotPos+1;
+		} else prefixLength=0;
+		var groupName = packageName.substring(prefixLength);
 		log.info("Created GroupedOpenApi: {}", groupName);
 		return GroupedOpenApi.builder().group(groupName)
 			.packagesToScan(new String [] { packageName }).build();
 	}
 
 	private Class<?> getMainClass()	{
-		List<Class<?>> applicationClasses = Stream.of(context.getBeanNamesForAnnotation(SpringBootApplication.class))
+		var applicationClasses = Stream.of(context.getBeanNamesForAnnotation(SpringBootApplication.class))
 			.map(n -> context.getBean(n).getClass()).collect(Collectors.toList());
 		if(applicationClasses.size()<1) {
 			log.error("No SpringBootApplication annotated class found. Returning {}", getMainClass());
@@ -66,25 +66,28 @@ public class GroupedOpenApiConfiguration {
 	}
 
 	@Bean
+	public SwaggerUiConfigProperties swaggerUiConfig(SwaggerUiConfigProperties config) {
+		config.setUrlsPrimaryName(System.getProperty(propertyUrlsPrimaryName));
+		return config;
+	}
+
+	@Bean
 	public GroupedOpenApi mainApi() {
 		var controllerClasses = new Reflections(getMainClass().getPackageName())
 				.getTypesAnnotatedWith(RestController.class);
 		log.info("RestControllers found: {}", controllerClasses);
-
-		List<String> packageNames = controllerClasses.stream().map(
+		var packageNames = controllerClasses.stream().map(
 			Class::getPackageName).collect(Collectors.toList());
 		if(packageNames.size()==0) {
 			log.error("No controller package classes found under: {}",
 				getMainClass().getPackageName());
 			return apiGroup(defaultMainGroupName, 0);
 		}
-		String commonParentPackage = StringUtils.getCommonPrefix(
+		var commonPackagePrefix = StringUtils.getCommonPrefix(
 			packageNames.toArray(new String []{}));
-		String mainPackage = packageNames.remove(0);
-		registerExtraGroupedOpenApis(packageNames, commonParentPackage.length());
-		if(mainGroup.length()==0)
-			System.setProperty(sysPropUrlsPrimaryName,
-				mainPackage.substring(commonParentPackage.length()));
-		return apiGroup(mainPackage, commonParentPackage.length());
+		var mainPackage = packageNames.remove(0);
+		registerExtraGroupedOpenApis(packageNames, commonPackagePrefix.length());
+		if(mainGroup==null || mainGroup.length()==0) mainGroup = mainPackage.substring(commonPackagePrefix.length());
+		return apiGroup(mainPackage, commonPackagePrefix.length());
 	}
 }

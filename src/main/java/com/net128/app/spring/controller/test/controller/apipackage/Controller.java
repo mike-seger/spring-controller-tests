@@ -16,9 +16,9 @@ public class Controller {
 	final static ObjectMapper om = new ObjectMapper();
 
 	@GetMapping("/")
-	public String index(@RequestParam("context")  String context) {
+	public String index(@RequestParam(value = "context", required = false) String context) {
 		try {
-			TypeReference<HashMap<String, String>> typeRef = new TypeReference<>() {};
+			var typeRef = new TypeReference<HashMap<String, String>>() {};
 			return "Context: " + om.readValue(context, typeRef);
 		} catch(Exception e) {
 			throw new ValidationException("Failed to validate context", e);
@@ -37,9 +37,3 @@ public class Controller {
 		return ex.getMessage();
 	}
 }
-
-/*
-@Data
-class Input {
-	String value1;
-}*/

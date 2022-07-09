@@ -1,5 +1,5 @@
 #springdoc.show-actuator: true
 
-springdoc.swagger-ui.urlsPrimaryName: apipackage
+#springdoc.swagger-ui.urlsPrimaryName: apipackage
 
 management.endpoints.web.exposure.include: '*'
