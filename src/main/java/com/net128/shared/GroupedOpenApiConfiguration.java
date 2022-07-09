@@ -7,19 +7,21 @@ import org.springdoc.core.GroupedOpenApi;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Configuration
 @Slf4j
 public class GroupedOpenApiConfiguration {
 	private final ConfigurableListableBeanFactory beanFactory;
-	private final Set<Class<?>> controllerClasses;
+	private final ApplicationContext context;
 	private final String mainGroup;
 	@SuppressWarnings("FieldCanBeLocal")
 	private final String defaultMainGroupName = "main";
@@ -27,13 +29,12 @@ public class GroupedOpenApiConfiguration {
 		"springdoc.swagger-ui.urlsPrimaryName";
 
 	public GroupedOpenApiConfiguration(
+			ApplicationContext context,
 			ConfigurableListableBeanFactory beanFactory,
 			@Value("${springdoc.swagger-ui.urlsPrimaryName:}") String mainGroup) {
 		this.beanFactory = beanFactory;
 		this.mainGroup = mainGroup;
-		this.controllerClasses = new Reflections(getMainClass().getPackageName())
-			.getTypesAnnotatedWith(RestController.class);
-		log.info("RestControllers found: {}", controllerClasses);
+		this.context = context;
 	}
 
 	private void registerExtraGroupedOpenApis(List<String> packageNames, int namePosition) throws BeansException {
@@ -43,6 +44,10 @@ public class GroupedOpenApiConfiguration {
 	}
 
 	private GroupedOpenApi apiGroup(String packageName, int namePosition) {
+		int lastDotPos = packageName.lastIndexOf('.');
+		if(lastDotPos>=0) {
+			if(lastDotPos+1<namePosition) namePosition=lastDotPos+1;
+		} else namePosition=0;
 		String groupName = packageName.substring(namePosition);
 		log.info("Created GroupedOpenApi: {}", groupName);
 		return GroupedOpenApi.builder().group(groupName)
@@ -50,21 +55,22 @@ public class GroupedOpenApiConfiguration {
 	}
 
 	private Class<?> getMainClass()	{
-		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
-		if (trace.length > 0) {
-			try {
-				return Class.forName(trace[trace.length - 1].getClassName());
-			} catch(Exception e) {
-				log.error("Failed to determine main class", e);
-			}
-		} else {
-			log.error("Failed to determine main class");
+		List<Class<?>> applicationClasses = Stream.of(context.getBeanNamesForAnnotation(SpringBootApplication.class))
+			.map(n -> context.getBean(n).getClass()).collect(Collectors.toList());
+		if(applicationClasses.size()<1) {
+			log.error("No SpringBootApplication annotated class found. Returning {}", getMainClass());
+			return getClass();
 		}
-		return getClass();
+		log.info("Return first SpringBootApplication from: {}.", applicationClasses);
+		return applicationClasses.get(0);
 	}
 
 	@Bean
 	public GroupedOpenApi mainApi() {
+		var controllerClasses = new Reflections(getMainClass().getPackageName())
+				.getTypesAnnotatedWith(RestController.class);
+		log.info("RestControllers found: {}", controllerClasses);
+
 		List<String> packageNames = controllerClasses.stream().map(
 			Class::getPackageName).collect(Collectors.toList());
 		if(packageNames.size()==0) {

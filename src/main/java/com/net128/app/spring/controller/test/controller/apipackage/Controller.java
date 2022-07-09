@@ -1,4 +1,4 @@
-package com.net128.app.spring.controller.test.controller.main;
+package com.net128.app.spring.controller.test.controller.apipackage;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
