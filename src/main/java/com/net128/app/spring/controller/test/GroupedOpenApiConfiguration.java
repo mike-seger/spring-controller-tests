@@ -27,7 +27,8 @@ public class GroupedOpenApiConfiguration {
 			@Value("${springdoc.swagger-ui.urlsPrimaryName:}") String mainGroup) {
 		this.beanFactory = beanFactory;
 		this.mainGroup = mainGroup;
-		this.controllerClasses = new Reflections("com.net128.app.spring.controller.test").getTypesAnnotatedWith(RestController.class);
+		this.controllerClasses = new Reflections(getClass().getPackageName())
+			.getTypesAnnotatedWith(RestController.class);
 		log.info("{}", controllerClasses);
 	}
 
