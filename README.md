@@ -13,6 +13,8 @@ see: GroupedOpenApi @Bean at https://springdoc.org/#migrating-from-springfox
 
 ## Links
 - https://github.com/OAI/OpenAPI-Specification
+- https://github.com/geekymon2/carmarketplace-apigateway
+- https://www.youtube.com/watch?v=lY24_jwMxTw
 - https://dgempiuc.medium.com/api-gateway-swagger-composition-e9416398ca47
 - https://api-platform.com/docs/core/openapi/
 - https://opensource.zalando.com/restful-api-guidelines/
