@@ -37,30 +37,40 @@ public class Controller {
 		String contextAttributes
 	) {
 		try {
-			var typeRef = new TypeReference<HashMap<String, Object>>() {};
+			var typeRef = new TypeReference<LinkedHashMap<String, Object>>() {};
 			var contextMap = om.readValue(context, typeRef);
 			if(!StringUtils.isAllBlank(contextAttributes))  {
 				var contextAttributeList = new ArrayList<>(List.of(
 					contextAttributes.replaceAll("\\s", "").split(",")));
 				contextAttributeList.removeAll(contextMap.keySet());
 				if(contextAttributeList.size()>0) {
-					return ResponseEntity.badRequest().body(Map.of(
+					return ResponseEntity.badRequest().body(sortedMapOf(
 						"id", UUID.randomUUID(),
 						"timestamp", LocalDateTime.now(),
 						"message", "The following attributes are missing from the context: "+
-						contextAttributeList.stream().map(String::valueOf)
-							.collect(Collectors.joining(", ")))
-					);
+							contextAttributeList.stream().map(String::valueOf)
+								.collect(Collectors.joining(", "))
+					));
 				}
 			}
-			return ResponseEntity.ok(new LinkedHashMap<>() {{
-				put("id", UUID.randomUUID());
-				put("timestamp", LocalDateTime.now());
-				put("quote", 3.515*offer);
-				put("context", contextMap);
-			}});
+			return ResponseEntity.ok(sortedMapOf(
+				"id", UUID.randomUUID(),
+				"timestamp", LocalDateTime.now(),
+				"quote", 3.515*offer,
+				"context", contextMap));
 		} catch(Exception e) {
 			throw new ValidationException("Failed to validate context", e);
 		}
+	}
+
+	@SuppressWarnings("SameParameterValue")
+	private <K, V> Map<K, V> sortedMapOf(K key, V value, Object ... keyValues) {
+		if(keyValues.length%2==1) throw new IllegalArgumentException("Number of arguments must be even");
+		var map = new LinkedHashMap<K, V>();
+		map.put(key, value);
+		for(int i = 0; i < keyValues.length; i += 2)
+			//noinspection unchecked
+			map.put((K) keyValues[i], (V) keyValues[i+1]);
+		return map;
 	}
 }
