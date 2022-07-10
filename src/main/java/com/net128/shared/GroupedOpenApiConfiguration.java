@@ -29,8 +29,8 @@ public class GroupedOpenApiConfiguration {
 		"springdoc.swagger-ui.urlsPrimaryName";
 
 	public GroupedOpenApiConfiguration(
-			ApplicationContext context,
-			ConfigurableListableBeanFactory beanFactory
+		ApplicationContext context,
+		ConfigurableListableBeanFactory beanFactory
 	) {
 		this.beanFactory = beanFactory;
 		this.mainGroup = context.getEnvironment().getProperty(propertyUrlsPrimaryName);

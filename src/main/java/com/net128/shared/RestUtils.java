@@ -10,7 +10,7 @@ import static com.net128.shared.CollectionUtils.sortedMapOf;
 
 public class RestUtils {
 	public static Map<String, Object> genericResponseBody(Object ...keyValues) {
-		List<Object> keyValueList = new ArrayList<>(List.of("timestamp", LocalDateTime.now()));
+		var keyValueList = new ArrayList<Object>(List.of("timestamp", LocalDateTime.now()));
 		keyValueList.addAll(List.of(keyValues));
 		return sortedMapOf("id", UUID.randomUUID(), keyValueList);
 	}
