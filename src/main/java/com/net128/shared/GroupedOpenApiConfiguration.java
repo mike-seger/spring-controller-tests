@@ -40,7 +40,7 @@ public class GroupedOpenApiConfiguration {
 	private void registerExtraGroupedOpenApis(List<String> packageNames, int prefixLength) throws BeansException {
 		packageNames.forEach(p -> beanFactory.registerSingleton(
 			GroupedOpenApiConfiguration.class.getSimpleName()+
-			"-" + p, apiGroup(p,prefixLength)));
+				"-" + p, apiGroup(p,prefixLength)));
 	}
 
 	private GroupedOpenApi apiGroup(String packageName, int prefixLength) {
@@ -73,11 +73,7 @@ public class GroupedOpenApiConfiguration {
 
 	@Bean
 	public GroupedOpenApi mainApi() {
-		var controllerClasses = new Reflections(getMainClass().getPackageName())
-				.getTypesAnnotatedWith(RestController.class);
-		log.info("RestControllers found: {}", controllerClasses);
-		var packageNames = controllerClasses.stream().map(
-			Class::getPackageName).collect(Collectors.toList());
+		var packageNames = getPackageName();
 		if(packageNames.size()==0) {
 			log.error("No controller package classes found under: {}",
 				getMainClass().getPackageName());
@@ -89,5 +85,30 @@ public class GroupedOpenApiConfiguration {
 		registerExtraGroupedOpenApis(packageNames, commonPackagePrefix.length());
 		if(mainGroup==null || mainGroup.length()==0) mainGroup = mainPackage.substring(commonPackagePrefix.length());
 		return apiGroup(mainPackage, commonPackagePrefix.length());
+	}
+
+	//@Bean
+	//TODO this should work, but does not get used by swagger-ui
+	@SuppressWarnings("unused")
+	public List<GroupedOpenApi> groupedOpenApis() {
+		var packageNames = getPackageName();
+		if(packageNames.size()==0) {
+			log.error("No controller package classes found under: {}",
+					getMainClass().getPackageName());
+			return List.of(apiGroup(defaultMainGroupName, 0));
+		}
+		var commonPackagePrefix = StringUtils.getCommonPrefix(
+			packageNames.toArray(new String []{}));
+		var mainPackage = packageNames.get(0);
+		if(mainGroup==null || mainGroup.length()==0) mainGroup = mainPackage.substring(commonPackagePrefix.length());
+		return packageNames.stream().map(p -> apiGroup(p,commonPackagePrefix.length())).collect(Collectors.toList());
+	}
+
+	private List<String> getPackageName() {
+		var controllerClasses = new Reflections(getMainClass().getPackageName())
+			.getTypesAnnotatedWith(RestController.class);
+		log.info("RestControllers found: {}", controllerClasses);
+		return controllerClasses.stream().map(
+			Class::getPackageName).collect(Collectors.toList());
 	}
 }
