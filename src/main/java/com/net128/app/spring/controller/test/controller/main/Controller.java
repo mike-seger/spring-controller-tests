@@ -1,7 +1,5 @@
 package com.net128.app.spring.controller.test.controller.main;
 
-import static com.net128.app.spring.controller.test.CollectionUtils.sortedMapOf;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,12 +7,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.ValidationException;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import static com.net128.shared.RestUtils.genericResponseBody;
 
 @SuppressWarnings("unused")
 @RestController
@@ -46,20 +51,15 @@ public class Controller {
 					contextAttributes.replaceAll("\\s", "").split(",")));
 				contextAttributeList.removeAll(contextMap.keySet());
 				if(contextAttributeList.size()>0) {
-					return ResponseEntity.badRequest().body(sortedMapOf(
-						"id", UUID.randomUUID(),
-						"timestamp", LocalDateTime.now(),
+					return ResponseEntity.badRequest().body(genericResponseBody(
 						"message", "The following attributes are missing from the context: "+
 							contextAttributeList.stream().map(String::valueOf)
 								.collect(Collectors.joining(", "))
 					));
 				}
 			}
-			return ResponseEntity.ok(sortedMapOf(
-				"id", UUID.randomUUID(),
-				"timestamp", LocalDateTime.now(),
-				"quote", 3.515*offer,
-				"context", contextMap));
+			return ResponseEntity.ok(genericResponseBody(
+				"quote", 3.515*offer, "context", contextMap));
 		} catch(Exception e) {
 			throw new ValidationException("Failed to validate context", e);
 		}
