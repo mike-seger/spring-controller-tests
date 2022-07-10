@@ -1,5 +1,7 @@
 package com.net128.app.spring.controller.test.controller.main;
 
+import static com.net128.app.spring.controller.test.CollectionUtils.sortedMapOf;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,16 +63,5 @@ public class Controller {
 		} catch(Exception e) {
 			throw new ValidationException("Failed to validate context", e);
 		}
-	}
-
-	@SuppressWarnings("SameParameterValue")
-	private <K, V> Map<K, V> sortedMapOf(K key, V value, Object ... keyValues) {
-		if(keyValues.length%2==1) throw new IllegalArgumentException("Number of arguments must be even");
-		var map = new LinkedHashMap<K, V>();
-		map.put(key, value);
-		for(int i = 0; i < keyValues.length; i += 2)
-			//noinspection unchecked
-			map.put((K) keyValues[i], (V) keyValues[i+1]);
-		return map;
 	}
 }
